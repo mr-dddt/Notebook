@@ -1,0 +1,8 @@
+{
+  "name": "Daniel's Knowledge Hub",
+  "sidebar": [
+    ["Overview", "/"],
+    ["Security", [["Broker Question", "/broker-question"]]]
+  ],
+  "experimentalCodehike": true
+}
