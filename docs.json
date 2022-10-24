@@ -1,8 +1,15 @@
 {
   "name": "Magic Notebook",
   "sidebar": [
-    ["Overview", "/"],
-    ["Security", [["Broker Question", "/broker-question"]]]
+    ["Welcome", "/"],
+    ["Security", 
+      [
+        [
+          "CTF", 
+          ["Broker Challenge", "/Broker-Challenge"]
+        ]
+      ]
+    ]
   ],
   "experimentalCodehike": true
 }

