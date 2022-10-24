@@ -2,16 +2,10 @@
   "name": "Magic Notebook",
   "sidebar": [
     ["Welcome", "/"],
-    ["Security", 
+    [ 
+      "CTF", 
       [
-        [
-          "CTF", 
-          [["Broker Challenge", "/Broker-Challenge"]]
-        ],
-        [
-          "Ethernut", 
-          [["Practice Challenge","/Ethernut-Practrice-01"]]
-        ]
+        ["Broker Challenge", "/Broker-Challenge"]
       ]
     ]
   ],
