@@ -1,5 +1,5 @@
 {
-  "name": "Daniel's Knowledge Hub",
+  "name": "Magic Notebook",
   "sidebar": [
     ["Overview", "/"],
     ["Security", [["Broker Question", "/broker-question"]]]
