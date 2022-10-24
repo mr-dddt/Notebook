@@ -4,16 +4,17 @@
 ## Description & Setup
 | This broker has pretty good rates
 
+The majority of the setup is in the `Setup.sol` smart contract, it contains:
+- AMT Token Contract: been used as the treasury token for lending protocol
+- IUniswapV2Factory Interface: interface for Uniswap V2 create pair & Setup
+- Setup Contract: create and bootstrap the token/weth pool for borrowing against WETH
+
 | ITEM                                | Description                    |
 |-------------------------------------|--------------------------------|
 | Contract Address <- Our hack target | Paradigm-CTF-2021-Broker       |
 | Setup Contract                      | Paradigm-CTF-2021-Broker-Setup |
 | Solution Contract                   | Solution                       |
 
-The majority of the setup is in the `Setup.sol` smart contract, it contains:
-- AMT Token Contract: been used as the treasury token for lending protocol
-- IUniswapV2Factory Interface: interface for Uniswap V2 create pair & Setup
-- Setup Contract: create and bootstrap the token/weth pool for borrowing against WETH
 
 Below is the setup logic: 
 - 1st create a pair for AMT & WETH
