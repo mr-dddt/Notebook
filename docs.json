@@ -2,12 +2,7 @@
   "name": "Magic Notebook",
   "sidebar": [
     ["Welcome", "/"],
-    [ 
-      "CTF", 
-      [
-        ["Broker Challenge", "/Broker_Challenge"]
-      ]
-    ]
+    [ "CTF", [["Broker Challenge", "/Broker_Challenge"]]]
   ],
   "experimentalCodehike": true
 }
