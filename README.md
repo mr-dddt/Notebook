@@ -8,7 +8,7 @@ https://docs.page/Daniel-Verilog/Notebook
 | feel free to join & share
 
 ```js mark=1[31:41]
-console.log("Daniel's study notes");
+console.log("Daniel, aviation geek, science explorer");
 //              |
 //      Twitter: @DanielVerilog
 //
