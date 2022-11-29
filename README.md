@@ -1,5 +1,5 @@
 # Notebook
-| Things are magic before you understand how it works
+| interesting knowledge lol 
 
 A more user-friendly view of the Notebook is here:
 https://docs.page/Daniel-Verilog/Notebook
@@ -8,10 +8,10 @@ https://docs.page/Daniel-Verilog/Notebook
 | feel free to join & share
 
 ```js mark=1[31:41]
-console.log("Daniel, aviation geek, science explorer");
+console.log("Daniel, engineer, aviation geek, science explorer");
 //              |
 //      Twitter: @DanielVerilog
 //
-//      Things are magic before you understand how it works
-//      I enjoy sharing my ** magic ** with my friends ; )
+//      build 🧑‍💻 @verilog_audit || 🧐 security engineer ||
+//      I enjoy sharing with my friends ; )
 ```

